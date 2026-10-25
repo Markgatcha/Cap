@@ -7,7 +7,11 @@ on:
 
 jobs:
   bench:
-    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04-arm, macos-14]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -15,7 +19,7 @@ jobs:
       - name: Machine
         run: |
           uname -m
-          lscpu | sed -n '1,14p'
+          sysctl -n machdep.cpu.brand_string 2>/dev/null || lscpu | sed -n '1,12p'
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -27,10 +31,10 @@ jobs:
       - name: Assemble a crate around frame.rs and the PR bench
         run: |
           mkdir -p /tmp/bench/src /tmp/bench/benches
-          cp apps/desktop-gpui/kernels/src/frame.rs /tmp/bench/src/lib.rs
+          cp apps/desktop-gpui/kernels/src/frame.rs /tmp/bench/src/frame.rs
+          printf 'pub mod frame;\n' > /tmp/bench/src/lib.rs
           cp apps/desktop-gpui/kernels/benches/swap_red_blue.rs /tmp/bench/benches/swap_red_blue.rs
           cp .arm-bench/Cargo.toml /tmp/bench/Cargo.toml
-          head -n 5 /tmp/bench/src/lib.rs
 
       - name: Bench
         working-directory: /tmp/bench
